@@ -4,7 +4,7 @@
 #
 #
 #
-#                                                     1. EDA
+#                                            1. Preprocessing 1
 #
 #
 #
@@ -24,19 +24,15 @@ import matplotlib as mpl
 import seaborn as sns
 import pickle
 
+from sklearn.model_selection import KFold
+
 
 # --------------------------------------->>> [Set directory]
 
 
 # ----- Set output path
 
-filename = '001.EDA'
-
-if filename not in os.listdir('out/EDA'):
-
-    os.mkdir('{}/out/EDA/{}'.format(os.getcwd(), filename))
-
-out_path = 'out/EDA/{}'.format(filename)
+out_path = 'data'
 
 # --------------------------------------->>> [Set options]
 
@@ -54,6 +50,7 @@ plt.rcParams['font.family'] = 'AppleGothic'
 plt.rcParams['axes.unicode_minus'] = False
 
 
+
 # --------------------------------------->>> [Data loading]
 
 raw_train_df = pd.read_csv('data/235745_parking_data/train.csv')
@@ -68,8 +65,9 @@ raw_test_df.rename({'도보 10분거리 내 지하철역 수(환승노선 수 �
                      '도보 10분거리 내 버스정류장 수' : 'bus'}, axis = 1, inplace = True)
 
 
+
 # ----------------------------------------------------------------------------------------------------------------------
-# 1. Data preprocessing
+# 1. 단지별 요약 통계량 만들기
 # ----------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------->>> [이상값 처리]
@@ -110,7 +108,7 @@ raw_test_df['전용면적'] = raw_test_df['전용면적'].map(tmp_fn)
 code_list_uq = raw_train_df['단지코드'].unique().tolist()
 
 need_columns = ['단지코드', '총세대수', '임대건물구분', '지역', '공급유형'] +\
-    [f'면적_{x}_세대수' for x in np.arange(5, 105, 5)] +\
+    [f'면적_{x}_세대수' for x in np.arange(15, 105, 5)] +\
     ['공가수', '자격유형', 'subway', 'bus', '단지내주차면수', '등록차량수']
 
 base_frame = pd.DataFrame({},
@@ -160,13 +158,15 @@ for code in code_list_uq:
 
 train_df = pd.concat(train_df_list)
 
+train_df.reset_index(drop = True, inplace = True)
+
 # --------------------------------------->>> [요약 통계량 만들기, test set]
 
 
 code_list_uq = raw_test_df['단지코드'].unique().tolist()
 
 need_columns = ['단지코드', '총세대수', '임대건물구분', '지역', '공급유형'] +\
-    [f'면적_{x}_세대수' for x in np.arange(5, 105, 5)] +\
+    [f'면적_{x}_세대수' for x in np.arange(15, 105, 5)] +\
     ['공가수', '자격유형', 'subway', 'bus', '단지내주차면수']
 
 base_frame = pd.DataFrame({},
@@ -215,90 +215,39 @@ for code in code_list_uq:
 
 test_df = pd.concat(test_df_list)
 
+test_df.reset_index(drop = True, inplace = True)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
-# 2. 상관성 보기
+# 2. Categorical 변수 전처리
 # ----------------------------------------------------------------------------------------------------------------------
 
-fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+# --------------------------------------->>> [지역 mean encoding]
 
-x_ = train_df['총세대수'].values
-y_ = train_df['등록차량수'].values
+# ----- Train set
 
-x_apt = x_[train_df['임대건물구분'] == '아파트']
-x_etc = x_[train_df['임대건물구분'] != '아파트']
+mean_enc_list = []
 
-y_apt = y_[train_df['임대건물구분'] == '아파트']
-y_etc = y_[train_df['임대건물구분'] != '아파트']
+for tr_idx, ts_idx in KFold(n_splits = 5, shuffle = False).split(train_df):
 
+    tr_df = train_df.iloc[tr_idx, :].copy()
+    ts_df = train_df.iloc[ts_idx, :].copy()
 
-# ax.scatter(x_, y_,
-#            color = sns.color_palette()[0],
-#            s = 5,
-#            alpha = 0.3)
+    ts_df['mean_enc_region'] = ts_df['지역'].map(tr_df.groupby('지역')['등록차량수'].mean())
 
-ax.scatter(x_apt, y_apt,
-           color = sns.color_palette()[0],
-           s = 5,
-           alpha = 0.3)
+    mean_enc_list.append(ts_df)
 
-ax.scatter(x_etc, y_etc,
-           color = sns.color_palette()[1],
-           s = 5,
-           alpha = 0.3)
+train_df = pd.concat(mean_enc_list)
 
-ax.set_xlabel('총세대수')
-ax.set_ylabel('등록차량수')
+global_mean = train_df['등록차량수'].mean()
+train_df['mean_enc_region'].fillna(global_mean, inplace = True)
 
-fig.tight_layout()
+# ----- Test set
 
-plt.close(fig)
+test_df['mean_enc_region'] = test_df['지역'].map(train_df.groupby('지역')['등록차량수'].mean())
 
-fig.show()
-
-# ----------------------------------------------------------------------------------------------------------------------
-# 3. Categorical 정보 확인해보기
-# ----------------------------------------------------------------------------------------------------------------------
-
-# --------------------------------------->>> [지역성]
-
-fig, ax = plt.subplots(1, 1, figsize = (20, 5))
-
-sns.boxplot(x = '지역', y = '등록차량수', data = train_df, ax = ax)
-
-plt.close(fig)
-
-fig.show()
-
-# --------------------------------------->>> [공급유형]
-
-fig, ax = plt.subplots(1, 1, figsize = (40, 10))
-
-sns.boxplot(x = '공급유형', y = '등록차량수', data = train_df, ax = ax)
-
-fig.tight_layout()
-
-plt.close(fig)
-
-fig.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+pickle.dump(train_df, open('data/train_df.sav', 'wb'))
+pickle.dump(test_df, open('data/test_df.sav', 'wb'))
 
 
 
