@@ -25,6 +25,8 @@ import seaborn as sns
 import pickle
 
 from sklearn.model_selection import KFold
+from sklearn.decomposition import NMF
+
 
 
 # --------------------------------------->>> [Set directory]
@@ -193,7 +195,7 @@ for code in code_list_uq:
     sum_df['공가수'] = sub_df['공가수'].unique()[0]
     sum_df['자격유형'] = '+'.join(np.sort(sub_df['자격유형'].dropna().unique()).tolist())
 
-    for ii in np.arange(5, 105, 5):
+    for ii in np.arange(15, 105, 5):
 
         if ii in sub_df['전용면적'].values:
 
@@ -217,6 +219,34 @@ test_df = pd.concat(test_df_list)
 
 test_df.reset_index(drop = True, inplace = True)
 
+# --------------------------------------->>> [공급유형 범주 합치기]
+
+in_test_cate = test_df['공급유형'].unique().tolist()
+
+train_df = train_df.loc[train_df['공급유형'].isin(in_test_cate), :]
+
+train_df['공급유형_merge'] = train_df['공급유형'].map({'공공임대(50년)' : '기타',
+                                                  '공공임대(10년)+공공임대(분납)' : '기타',
+                                                  '국민임대+영구임대+행복주택' : '기타',
+                                                  '영구임대' : '기타',
+                                                  '국민임대' : '국민임대',
+                                                  '공공임대(10년)' : '공공임대(10년)',
+                                                  '영구임대+임대상가' : '영구임대+임대상가',
+                                                  '행복주택' : '행복주택',
+                                                  '국민임대+영구임대' : '국민임대+영구임대'})
+
+test_df['공급유형_merge'] = test_df['공급유형'].map({'공공임대(50년)' : '기타',
+                                              '공공임대(10년)+공공임대(분납)' : '기타',
+                                              '국민임대+영구임대+행복주택' : '기타',
+                                              '영구임대' : '기타',
+                                              '국민임대' : '국민임대',
+                                              '공공임대(10년)' : '공공임대(10년)',
+                                              '영구임대+임대상가' : '영구임대+임대상가',
+                                              '행복주택' : '행복주택',
+                                              '국민임대+영구임대' : '국민임대+영구임대'})
+
+
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 2. Categorical 변수 전처리
@@ -228,7 +258,7 @@ test_df.reset_index(drop = True, inplace = True)
 
 mean_enc_list = []
 
-for tr_idx, ts_idx in KFold(n_splits = 5, shuffle = False).split(train_df):
+for tr_idx, ts_idx in KFold(n_splits = 5, shuffle = True, random_state = 0).split(train_df):
 
     tr_df = train_df.iloc[tr_idx, :].copy()
     ts_df = train_df.iloc[ts_idx, :].copy()
@@ -246,8 +276,79 @@ train_df['mean_enc_region'].fillna(global_mean, inplace = True)
 
 test_df['mean_enc_region'] = test_df['지역'].map(train_df.groupby('지역')['등록차량수'].mean())
 
+
+# --------------------------------------->>> [공급유형 mean encoding]
+
+# ----- Train set
+
+mean_enc_list = []
+
+for tr_idx, ts_idx in KFold(n_splits = 5, shuffle = True, random_state = 0).split(train_df):
+
+    tr_df = train_df.iloc[tr_idx, :].copy()
+    ts_df = train_df.iloc[ts_idx, :].copy()
+
+    ts_df['mean_enc_supply'] = ts_df['공급유형_merge'].map(tr_df.groupby('공급유형_merge')['등록차량수'].mean())
+
+    mean_enc_list.append(ts_df)
+
+train_df = pd.concat(mean_enc_list)
+
+global_mean = train_df['등록차량수'].mean()
+train_df['mean_enc_supply'].fillna(global_mean, inplace = True)
+
+# ----- Test set
+
+test_df['mean_enc_supply'] = test_df['공급유형_merge'].map(train_df.groupby('공급유형_merge')['등록차량수'].mean())
+
+train_df.reset_index(drop = True, inplace = True)
+test_df.reset_index(drop = True, inplace = True)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 3. 면적 관련 변수 전처리
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [NMF로 latent feature extraction]
+
+size_df_tr = train_df[[x for x in train_df.columns if '면적_' in x]]
+size_df_ts = test_df[[x for x in test_df.columns if '면적_' in x]]
+size_df_total = pd.concat([size_df_tr, size_df_ts])
+
+size_arr_total = size_df_total.values
+
+nmf = NMF(n_components = 50,
+          init = 'random',
+          random_state = 0,
+          max_iter = 300)
+
+W = nmf.fit_transform(size_arr_total)
+
+W_tr = W[0:size_df_tr.shape[0], :]
+W_ts = W[size_df_tr.shape[0]:, :]
+
+size_df_train = pd.DataFrame(W_tr,
+                             columns = [f'size_{x}' for x in range(W_tr.shape[1])])
+
+size_df_test = pd.DataFrame(W_ts,
+                            columns = [f'size_{x}' for x in range(W_ts.shape[1])])
+
+
+train_df = pd.concat([train_df, size_df_train], axis = 1)
+test_df = pd.concat([test_df, size_df_test], axis = 1)
+
+
 pickle.dump(train_df, open('data/train_df.sav', 'wb'))
 pickle.dump(test_df, open('data/test_df.sav', 'wb'))
+
+
+
+
+
+
+
+
+
 
 
 

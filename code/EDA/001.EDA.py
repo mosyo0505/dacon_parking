@@ -24,6 +24,13 @@ import matplotlib as mpl
 import seaborn as sns
 import pickle
 
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.decomposition import NMF
+
+# exec(open('code/preprocessing/001.preprocessing_1.py').read())
+exec(open('code/functions/001.feature_importance.py').read())
+
 
 # --------------------------------------->>> [Set directory]
 
@@ -56,16 +63,8 @@ plt.rcParams['axes.unicode_minus'] = False
 
 # --------------------------------------->>> [Data loading]
 
-raw_train_df = pd.read_csv('data/235745_parking_data/train.csv')
-raw_test_df = pd.read_csv('data/235745_parking_data/test.csv')
-raw_age_gender_info = pd.read_csv('data/235745_parking_data/age_gender_info.csv')
-sample_submission = pd.read_csv('data/235745_parking_data/sample_submission.csv')
-
-raw_train_df.rename({'도보 10분거리 내 지하철역 수(환승노선 수 반영)' : 'subway',
-                     '도보 10분거리 내 버스정류장 수' : 'bus'}, axis = 1, inplace=  True)
-
-raw_test_df.rename({'도보 10분거리 내 지하철역 수(환승노선 수 반영)' : 'subway',
-                     '도보 10분거리 내 버스정류장 수' : 'bus'}, axis = 1, inplace = True)
+train_df = pickle.load(open('data/train_df.sav', 'rb'))
+test_df = pickle.load(open('data/test_df.sav', 'rb'))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -262,6 +261,8 @@ fig.show()
 
 # --------------------------------------->>> [지역성]
 
+# ----- 원본
+
 fig, ax = plt.subplots(1, 1, figsize = (20, 5))
 
 sns.boxplot(x = '지역', y = '등록차량수', data = train_df, ax = ax)
@@ -270,17 +271,194 @@ plt.close(fig)
 
 fig.show()
 
+# ----- Mean encoding 실시 후
+
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '지역', y = 'mean_enc_region', data = train_df, ax = ax)
+
+plt.close(fig)
+
+fig.show()
+
+# ----- Mean encoding 실시 후 Test df
+
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '지역', y = 'mean_enc_region', data = test_df, ax = ax)
+
+plt.close(fig)
+
+fig.show()
+
+
+# ----- 상관성
+
+custom_pallete = sns.color_palette() + sns.color_palette('Pastel1')
+# sns.palplot(custom_pallete)
+# plt.show()
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+for ii, name in enumerate(train_df['지역'].unique()):
+
+    sub_df = train_df.loc[train_df['지역'] == name, :]
+
+    x_ = sub_df['mean_enc_region'].values
+    y_ = sub_df['등록차량수'].values
+
+    ax.scatter(x_, y_,
+               color=custom_pallete[ii],
+               s=5,
+               alpha=0.3)
+
+plt.close(fig)
+
+fig.show()
+
+
 # --------------------------------------->>> [공급유형]
 
-fig, ax = plt.subplots(1, 1, figsize = (40, 10))
+# ----- 원본
 
-sns.boxplot(x = '공급유형', y = '등록차량수', data = train_df, ax = ax)
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '공급유형_merge', y = '등록차량수', data = train_df, ax = ax)
 
 fig.tight_layout()
 
 plt.close(fig)
 
 fig.show()
+
+# ----- Mean encoding 후
+
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '공급유형_merge', y = 'mean_enc_supply', data = train_df, ax = ax)
+
+fig.tight_layout()
+
+plt.close(fig)
+
+fig.show()
+
+# ----- Mean encoding 실시 후 Test df
+
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '공급유형_merge', y = 'mean_enc_supply', data = test_df, ax = ax)
+
+plt.close(fig)
+
+fig.show()
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 4. 면적별 세대수 관련
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [Heatmap 확인]
+
+size_df.sort_values(by = '등록차량수', inplace = True)
+
+fig, ax = plt.subplots(1, 1, figsize = (10, 10))
+
+size_arr = size_df.iloc[:, :-1].values
+
+ax = sns.heatmap(size_arr,
+                 cmap = sns.color_palette('Greys'))
+
+plt.close(fig)
+
+fig.show()
+
+
+scaler = MinMaxScaler()
+scaler.fit(size_arr)
+
+size_arr_scaled = scaler.transform(size_arr)
+
+fig, ax = plt.subplots(1, 1, figsize = (10, 10))
+
+size_arr = size_df.iloc[:, :-1].values
+
+ax = sns.heatmap(size_arr_scaled,
+                 cmap = sns.color_palette('Greys'))
+
+plt.close(fig)
+
+fig.show()
+
+
+# --------------------------------------->>> [NMF로 latent feature 찾기]
+
+X_train = train_df[[x for x in train_df.columns if 'size_' in x]].values
+y_train = train_df['등록차량수'].values
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = [x for x in train_df.columns if 'size_' in x])
+
+
+fig, ax = plt.subplots(1, 1, figsize = (40, 10))
+
+sns.boxplot(data = imp_df, ax = ax)
+
+plt.close(fig)
+
+fig.show() # Size 3, Size 9이 중요해보임
+
+
+fig, axes = plt.subplots(1, 2, figsize = (10, 5))
+
+ax_0, ax_1 = axes[0], axes[1]
+
+x_9 = train_df['size_9'].values
+x_3 = train_df['size_3'].values
+y_ = train_df['등록차량수'].values
+
+ax_0.scatter(x_9, y_,
+             color = sns.color_palette()[0],
+             s = 5,
+             alpha = 0.3)
+
+ax_1.scatter(x_3, y_,
+             color = sns.color_palette()[0],
+             s = 5,
+             alpha = 0.3)
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [원본 면적에 대한 feature importance 확인]
+
+X_train = train_df[[x for x in train_df.columns if '면적' in x]].values
+y_train = train_df['등록차량수'].values
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = [x for x in train_df.columns if '면적' in x])
+
+
+fig, ax = plt.subplots(1, 1, figsize = (30, 10))
+
+sns.boxplot(data = imp_df, ax = ax)
+
+plt.close(fig)
+
+fig.show()
+
+
+
+
+
 
 
 
