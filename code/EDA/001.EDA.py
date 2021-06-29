@@ -219,6 +219,8 @@ test_df = pd.concat(test_df_list)
 # 2. 상관성 보기
 # ----------------------------------------------------------------------------------------------------------------------
 
+# --------------------------------------->>> [총세대수]
+
 fig, ax = plt.subplots(1, 1, figsize = (5, 5))
 
 x_ = train_df['총세대수'].values
@@ -250,6 +252,22 @@ ax.set_xlabel('총세대수')
 ax.set_ylabel('등록차량수')
 
 fig.tight_layout()
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [공가수]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['공가수'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
 
 plt.close(fig)
 
@@ -453,7 +471,12 @@ sns.boxplot(data = imp_df, ax = ax)
 
 plt.close(fig)
 
-fig.show()
+fig.show() # 원본 면적 중요 변수 : 35, 45, 50, 55, 70
+
+
+
+
+
 
 
 

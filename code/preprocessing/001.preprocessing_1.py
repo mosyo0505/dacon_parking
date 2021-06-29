@@ -131,6 +131,7 @@ for code in code_list_uq:
     sum_df['임대건물구분'] = '+'.join(np.sort(sub_df['임대건물구분'].unique()).tolist())
     sum_df['지역'] = sub_df['지역'].unique()[0]
     sum_df['공급유형'] = '+'.join(np.sort(sub_df['공급유형'].unique()).tolist())
+    sum_df['세대수합'] = sub_df['전용면적별세대수'].sum()
     sum_df['subway'] = sub_df['subway'].unique()[0]
     sum_df['bus'] = sub_df['bus'].unique()[0]
     sum_df['단지내주차면수'] = sub_df['단지내주차면수'].unique()[0]
@@ -189,6 +190,7 @@ for code in code_list_uq:
     sum_df['임대건물구분'] = '+'.join(np.sort(sub_df['임대건물구분'].unique()).tolist())
     sum_df['지역'] = sub_df['지역'].unique()[0]
     sum_df['공급유형'] = '+'.join(np.sort(sub_df['공급유형'].unique()).tolist())
+    sum_df['세대수합'] = sub_df['전용면적별세대수'].sum()
     sum_df['subway'] = sub_df['subway'].unique()[0]
     sum_df['bus'] = sub_df['bus'].unique()[0]
     sum_df['단지내주차면수'] = sub_df['단지내주차면수'].unique()[0]
@@ -336,6 +338,25 @@ size_df_test = pd.DataFrame(W_ts,
 
 train_df = pd.concat([train_df, size_df_train], axis = 1)
 test_df = pd.concat([test_df, size_df_test], axis = 1)
+
+train_df.reset_index(drop = True, inplace = True)
+test_df.reset_index(drop = True, inplace = True)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 4. 해석 가능한 파생 변수 생성
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [임대세대외]
+
+train_df['임대세대외'] = train_df['총세대수'] - train_df['세대수합']
+test_df['임대세대외'] = test_df['총세대수'] - test_df['세대수합']
+
+# --------------------------------------->>> [실세대수]
+
+train_df['실세대수'] = train_df['총세대수'] - train_df['공가수']
+test_df['실세대수'] = test_df['총세대수'] - test_df['공가수']
+
 
 
 pickle.dump(train_df, open('data/train_df.sav', 'wb'))
