@@ -247,7 +247,37 @@ test_df['공급유형_merge'] = test_df['공급유형'].map({'공공임대(50년
                                               '행복주택' : '행복주택',
                                               '국민임대+영구임대' : '국민임대+영구임대'})
 
+# --------------------------------------->>> [자격유형 범주 합치기]
 
+# ----- Train set
+
+selected_items_list = ['A', 'C+D', 'H', 'J', 'A+E']
+
+tf_result = np.array([False]*train_df.shape[0])
+
+for item in selected_items_list:
+
+    tf_list = train_df['자격유형'].values == item
+
+    tf_result = tf_result | tf_list
+
+
+train_df['자격유형_merge'] = [train_df['자격유형'].values[ii] if tf_result[ii] else '기타' for ii in range(train_df.shape[0])]
+
+# ----- Test set
+
+selected_items_list = ['A', 'C+D', 'H', 'J', 'A+E']
+
+tf_result = np.array([False]*test_df.shape[0])
+
+for item in selected_items_list:
+
+    tf_list = test_df['자격유형'].values == item
+
+    tf_result = tf_result | tf_list
+
+
+test_df['자격유형_merge'] = [test_df['자격유형'].values[ii] if tf_result[ii] else '기타' for ii in range(test_df.shape[0])]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -303,6 +333,33 @@ train_df['mean_enc_supply'].fillna(global_mean, inplace = True)
 
 test_df['mean_enc_supply'] = test_df['공급유형_merge'].map(train_df.groupby('공급유형_merge')['등록차량수'].mean())
 
+# --------------------------------------->>> [자격유형 mean encoding]
+
+# ----- Train set
+
+mean_enc_list = []
+
+for tr_idx, ts_idx in KFold(n_splits = 5, shuffle = True, random_state = 0).split(train_df):
+
+    tr_df = train_df.iloc[tr_idx, :].copy()
+    ts_df = train_df.iloc[ts_idx, :].copy()
+
+    ts_df['mean_enc_cond'] = ts_df['자격유형_merge'].map(tr_df.groupby('자격유형_merge')['등록차량수'].mean())
+
+    mean_enc_list.append(ts_df)
+
+train_df = pd.concat(mean_enc_list)
+
+global_mean = train_df['등록차량수'].mean()
+train_df['mean_enc_cond'].fillna(global_mean, inplace = True)
+
+# ----- Test set
+
+test_df['mean_enc_cond'] = test_df['자격유형_merge'].map(train_df.groupby('자격유형_merge')['등록차량수'].mean())
+
+
+
+
 train_df.reset_index(drop = True, inplace = True)
 test_df.reset_index(drop = True, inplace = True)
 
@@ -342,9 +399,67 @@ test_df = pd.concat([test_df, size_df_test], axis = 1)
 train_df.reset_index(drop = True, inplace = True)
 test_df.reset_index(drop = True, inplace = True)
 
+# ----------------------------------------------------------------------------------------------------------------------
+# 4. 결측치 처리
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [Subway]
+
+train_df['subway'] = train_df['subway'].fillna(0)
+test_df['subway'] = test_df['subway'].fillna(0)
+
+# --------------------------------------->>> [Bus]
+
+global_median = np.nanmedian(np.r_[train_df['bus'].values, test_df['bus'].values])
+
+train_df['bus'] = train_df['bus'].fillna(global_median)
+
+# --------------------------------------->>> [임대보증금_mean]
+
+global_mean = np.nanmean(np.r_[train_df['임대보증금_mean'].values, test_df['임대보증금_mean'].values])
+
+train_df['임대보증금_mean'] = train_df['임대보증금_mean'].fillna(global_mean)
+test_df['임대보증금_mean'] = test_df['임대보증금_mean'].fillna(global_mean)
+
+# --------------------------------------->>> [임대보증금_min]
+
+global_mean = np.nanmean(np.r_[train_df['임대보증금_min'].values, test_df['임대보증금_min'].values])
+
+train_df['임대보증금_min'] = train_df['임대보증금_min'].fillna(global_mean)
+test_df['임대보증금_min'] = test_df['임대보증금_min'].fillna(global_mean)
+
+# --------------------------------------->>> [임대보증금_max]
+
+global_mean = np.nanmean(np.r_[train_df['임대보증금_max'].values, test_df['임대보증금_max'].values])
+
+train_df['임대보증금_max'] = train_df['임대보증금_max'].fillna(global_mean)
+test_df['임대보증금_max'] = test_df['임대보증금_max'].fillna(global_mean)
+
+# --------------------------------------->>> [임대료_mean]
+
+global_mean = np.nanmean(np.r_[train_df['임대료_mean'].values, test_df['임대료_mean'].values])
+
+train_df['임대료_mean'] = train_df['임대료_mean'].fillna(global_mean)
+test_df['임대료_mean'] = test_df['임대료_mean'].fillna(global_mean)
+
+# --------------------------------------->>> [임대료_min]
+
+global_mean = np.nanmean(np.r_[train_df['임대료_min'].values, test_df['임대료_min'].values])
+
+train_df['임대료_min'] = train_df['임대료_min'].fillna(global_mean)
+test_df['임대료_min'] = test_df['임대료_min'].fillna(global_mean)
+
+# --------------------------------------->>> [임대료_max]
+
+global_mean = np.nanmean(np.r_[train_df['임대료_max'].values, test_df['임대료_max'].values])
+
+train_df['임대료_max'] = train_df['임대료_max'].fillna(global_mean)
+test_df['임대료_max'] = test_df['임대료_max'].fillna(global_mean)
+
+
 
 # ----------------------------------------------------------------------------------------------------------------------
-# 4. 해석 가능한 파생 변수 생성
+# 5. 해석 가능한 파생 변수 생성
 # ----------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------->>> [임대세대외]
@@ -357,6 +472,46 @@ test_df['임대세대외'] = test_df['총세대수'] - test_df['세대수합']
 train_df['실세대수'] = train_df['총세대수'] - train_df['공가수']
 test_df['실세대수'] = test_df['총세대수'] - test_df['공가수']
 
+# --------------------------------------->>> [임대세대 비율]
+
+train_df['임대세대비율'] = train_df['세대수합'] / train_df['총세대수']
+test_df['임대세대비율'] = test_df['세대수합'] / test_df['총세대수']
+
+# --------------------------------------->>> [지하철 / 실세대수]
+
+train_df['subway_ratio'] = train_df['subway'] / train_df['실세대수']
+test_df['subway_ratio'] = test_df['subway'] / test_df['실세대수']
+
+# --------------------------------------->>> [버스정류장 / 실세대수]
+
+train_df['bus_ratio'] = train_df['bus'] / train_df['실세대수']
+test_df['bus_ratio'] = test_df['bus'] / test_df['실세대수']
+
+# --------------------------------------->>> [세대 당 주차면수]
+
+train_df['단위주차면수'] = train_df['단지내주차면수'] / train_df['실세대수']
+test_df['단위주차면수'] = test_df['단지내주차면수'] / test_df['실세대수']
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 6. 인구정보 합치기
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [컬럼명 변경]
+
+raw_age_gender_info.columns = list(map(lambda x : x.replace('(', '_').replace(')', ''),
+                                       raw_age_gender_info.columns))
+
+train_df = pd.merge(train_df, raw_age_gender_info,
+                    on = '지역',
+                    how = 'left')
+
+test_df = pd.merge(test_df, raw_age_gender_info,
+                   on = '지역',
+                   how = 'left')
+
+train_df.reset_index(drop = True, inplace = True)
+test_df.reset_index(drop = True, inplace = True)
 
 
 pickle.dump(train_df, open('data/train_df.sav', 'wb'))

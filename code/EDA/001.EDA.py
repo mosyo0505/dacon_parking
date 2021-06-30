@@ -273,6 +273,125 @@ plt.close(fig)
 
 fig.show()
 
+
+# --------------------------------------->>> [임대세대외]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['임대세대외'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [버스정류장]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['bus'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [버스정류장 / 실세대수]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['bus_ratio'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [단지 내 주차면수]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['단지내주차면수'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [세대 당 주차면수]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['단위주차면수'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [임대보증금_mean]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['임대보증금_mean'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+fig.show()
+
+# --------------------------------------->>> [임대보증금_max]
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+x_ = train_df['임대보증금_max'].values
+y_ = train_df['등록차량수'].values
+
+ax.scatter(x_, y_,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+fig.show()
+
+
+
+
+
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # 3. Categorical 정보 확인해보기
 # ----------------------------------------------------------------------------------------------------------------------
@@ -335,6 +454,8 @@ plt.close(fig)
 fig.show()
 
 
+
+
 # --------------------------------------->>> [공급유형]
 
 # ----- 원본
@@ -370,6 +491,44 @@ sns.boxplot(x = '공급유형_merge', y = 'mean_enc_supply', data = test_df, ax 
 plt.close(fig)
 
 fig.show()
+
+# --------------------------------------->>> [자격유형]
+
+# ----- 원본
+
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '자격유형_merge', y = '등록차량수', data = train_df, ax = ax)
+
+fig.tight_layout()
+
+plt.close(fig)
+
+fig.show()
+
+# ----- Mean encoding 후
+
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '자격유형_merge', y = 'mean_enc_cond', data = train_df, ax = ax)
+
+fig.tight_layout()
+
+plt.close(fig)
+
+fig.show()
+
+# ----- Mean encoding 실시 후 Test df
+
+fig, ax = plt.subplots(1, 1, figsize = (20, 5))
+
+sns.boxplot(x = '자격유형_merge', y = 'mean_enc_cond', data = test_df, ax = ax)
+
+plt.close(fig)
+
+fig.show()
+
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 4. 면적별 세대수 관련
