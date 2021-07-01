@@ -32,7 +32,7 @@ exec(open('code/functions/001.feature_importance.py').read())
 
 # ----- Set output path
 
-filename = '002.feature_importance.py'
+filename = '002.feature_importance'
 
 if filename not in os.listdir('out/EDA'):
 
@@ -142,7 +142,7 @@ sns.boxplot(data = imp_df, ax = ax)
 
 plt.close(fig)
 
-fig.show() # --->>> 총세대수, 세대수합, 실세대수 제외
+fig.show() # --->>> 총세대수, 세대수합, 실세대수 중요
 
 # --------------------------------------->>> [총세대수, 세대수합, 실세대수 제외]
 
@@ -169,7 +169,58 @@ fig.tight_layout()
 
 plt.close(fig)
 
-fig.show() # --->>> 총세대수, 세대수합, 실세대수 제외
+fig.show()
+
+# --------------------------------------->>> [중요도 분포 낮은 변수들 제외]
+
+feat_names = ['총세대수',
+              '면적_35_세대수',
+              '면적_45_세대수',
+              '면적_50_세대수',
+              '면적_55_세대수',
+              '면적_70_세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              'size_3',
+              'size_9',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+
+delete_feat_names = ['면적_55_세대수',
+                     'subway',
+                     '임대세대외',
+                     '임대세대비율',
+                     'subway_ratio',
+                     'mean_enc_region',
+                     'mean_enc_cond']
+
+for feat in delete_feat_names:
+
+    feat_names.remove(feat)
+
+# ----- 우선 대상 변수 저장
+
+pickle.dump(feat_names,
+            open('data/feat_names_1.sav', 'wb'))
+
+
 
 
 
