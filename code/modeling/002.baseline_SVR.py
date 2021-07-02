@@ -4,7 +4,7 @@
 #
 #
 #
-#                                       1. Baseline modeling : XGBoost (on server)
+#                                       2. Baseline modeling : SVR (on server)
 #
 #
 #
@@ -25,8 +25,9 @@ import seaborn as sns
 import pickle
 import ray
 
-from xgboost import XGBRegressor
+from sklearn.svm import SVR
 from sklearn.metrics import mean_absolute_error
+from sklearn.preprocessing import MinMaxScaler
 from skopt import gp_minimize
 from skopt.space.space import Integer, Real
 
@@ -37,7 +38,7 @@ from skopt.space.space import Integer, Real
 
 # ----- Set output path
 
-filename = '001.baseline_XGBoost'
+filename = '002.baseline_SVR'
 
 if filename not in os.listdir('out/modeling'):
 
@@ -81,23 +82,11 @@ sample_submission = pd.read_csv('data/235745_parking_data/sample_submission.csv'
 
 def objective(params):
 
-    # --------------------------------------->>> Unpack parameters
-
-    n_estimators = params[0]
-    max_depth = params[1]
-    learning_rate = params[2]
-    reg_alpha = params[3]
-    reg_lambda = params[4]
-
     # --------------------------------------->>> Build XGBoost
 
-    reg_xgboost = XGBRegressor(n_estimators = n_estimators,
-                               random_state = 0,
-                               max_depth = max_depth,
-                               learning_rate = learning_rate,
-                               reg_alpha = reg_alpha,
-                               reg_lambda = reg_lambda,
-                               n_jobs = 2)
+    reg_svr = SVR(kernel = 'rbf',
+                  C = params[0],
+                  gamma = params[1])
 
     # ----- 병렬처리
 
@@ -115,9 +104,15 @@ def objective(params):
         X_tr, y_tr = tr_df[X_names].values, tr_df[y_names].values
         X_val, y_val = val_df[X_names].values, val_df[y_names].values
 
-        reg_xgboost.fit(X_tr, y_tr)
+        scaler = MinMaxScaler()
+        scaler.fit(X_tr)
 
-        y_pred = reg_xgboost.predict(X_val)
+        X_tr_scaled = scaler.transform(X_tr)
+        X_val_scaled = scaler.transform(X_val)
+
+        reg_svr.fit(X_tr_scaled, y_tr)
+
+        y_pred = reg_svr.predict(X_val_scaled)
 
         return mean_absolute_error(y_val, y_pred)
 
@@ -128,15 +123,13 @@ def objective(params):
 
     return np.mean(mae_list)
 
+
 # --------------------------------------->>> [Hyper parameter space 범위 정하기]
 
 space = [
 
-    Integer(500, 5000),
-    Integer(5, 100),
-    Real(0.001, 0.1),
-    Real(0.01, 10),
-    Real(0.01, 10),
+    Real(0.01, 100),
+    Real(0.000001, 1)
 
 ]
 
@@ -153,24 +146,16 @@ opt_result  = gp_minimize(objective,
 pickle.dump(opt_result,
             open(f'{out_path}/opt_result_1.sav', 'wb'))
 
-
-# --------------------------------------->>> [Hyper parameter space 확인]
-
-opt_result = pickle.load(open(f'{out_path}/opt_result_1.sav', 'rb'))
-
 search_result_df = pd.DataFrame(opt_result.x_iters,
-                                columns = ['n_estimators',
-                                           'max_depth',
-                                           'learning_rate',
-                                           'reg_alpha',
-                                           'reg_lambda'])
+                                columns = ['C',
+                                           'gamma'])
 
 search_result_df['MAE'] = opt_result.func_vals
 
 
 fig, ax = plt.subplots(1, 1, figsize = (5, 5))
 
-ax.scatter(search_result_df['reg_lambda'].values,
+ax.scatter(search_result_df['gamma'].values,
            search_result_df['MAE'].values,
            color = sns.color_palette()[0],
            s = 5,
@@ -185,15 +170,16 @@ fig.show()
 
 # --------------------------------------->>> [재탐색]
 
+# --------------------------------------->>> [Hyper parameter space 범위 정하기]
+
 space = [
 
-    Integer(3000, 4000),
-    Integer(5, 20),
-    Real(0.001, 0.02),
-    Real(0.01, 1),
-    Real(9, 15),
+    Real(100, 1000),
+    Real(0.2, 0.6)
 
 ]
+
+# --------------------------------------->>> [Optimization 실행]
 
 opt_result  = gp_minimize(objective,
                           space,
@@ -206,25 +192,22 @@ opt_result  = gp_minimize(objective,
 pickle.dump(opt_result,
             open(f'{out_path}/opt_result_2.sav', 'wb'))
 
-
 search_result_df = pd.DataFrame(opt_result.x_iters,
-                                columns = ['n_estimators',
-                                           'max_depth',
-                                           'learning_rate',
-                                           'reg_alpha',
-                                           'reg_lambda'])
+                                columns = ['C',
+                                           'gamma'])
 
 search_result_df['MAE'] = opt_result.func_vals
 
+
 fig, ax = plt.subplots(1, 1, figsize = (5, 5))
 
-ax.scatter(search_result_df['reg_lambda'].values,
+ax.scatter(search_result_df['C'].values,
            search_result_df['MAE'].values,
            color = sns.color_palette()[0],
            s = 5,
            alpha = 0.5)
 
-ax.set_ylim(130, 140)
+# ax.set_ylim(130, 140)
 
 plt.close(fig)
 
@@ -232,23 +215,91 @@ fig.show()
 
 # --------------------------------------->>> [재탐색]
 
+# --------------------------------------->>> [Hyper parameter space 범위 정하기]
+
+space = [
+
+    Real(1000, 10000),
+    Real(0.2, 0.6)
+
+]
+
+# --------------------------------------->>> [Optimization 실행]
+
+opt_result  = gp_minimize(objective,
+                          space,
+                          n_calls = 100,
+                          acq_func = 'EI',
+                          random_state = 0,
+                          verbose = True,
+                          n_jobs = 6)
+
+pickle.dump(opt_result,
+            open(f'{out_path}/opt_result_3.sav', 'wb'))
+
+
+opt_result = pickle.load(open(f'{out_path}/opt_result_3.sav', 'rb'))
+
+search_result_df = pd.DataFrame(opt_result.x_iters,
+                                columns = ['C',
+                                           'gamma'])
+
+search_result_df['MAE'] = opt_result.func_vals
+
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+ax.scatter(search_result_df['gamma'].values,
+           search_result_df['MAE'].values,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+# ax.set_ylim(130, 140)
+
+plt.close(fig)
+
+fig.show()
+
+
+
+# --------------------------------------->>> [재탐색]
+
+# --------------------------------------->>> [Hyper parameter space 범위 정하기]
+
+space = [
+
+    Real(1000, 3000),
+    Real(0.2, 0.3)
+
+]
+
+# --------------------------------------->>> [Optimization 실행]
+
+opt_result  = gp_minimize(objective,
+                          space,
+                          n_calls = 100,
+                          acq_func = 'EI',
+                          random_state = 0,
+                          verbose = True,
+                          n_jobs = 6)
+
+pickle.dump(opt_result,
+            open(f'{out_path}/opt_result_4.sav', 'wb'))
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 2. Train model with optimized hyper parameter
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [Bayesian optimization을 위한 목적 함수 정의]
+
 def objective(params):
-
-    # --------------------------------------->>> Unpack parameters
-
-    learning_rate = params[0]
-    reg_alpha = params[1]
-    reg_lambda = params[2]
 
     # --------------------------------------->>> Build XGBoost
 
-    reg_xgboost = XGBRegressor(n_estimators = 3000,
-                               random_state = 0,
-                               max_depth = 5,
-                               learning_rate = learning_rate,
-                               reg_alpha = reg_alpha,
-                               reg_lambda = reg_lambda,
-                               n_jobs = 2)
+    reg_svr = SVR(kernel = 'rbf',
+                  C = params[0],
+                  gamma = params[1])
 
     # ----- 병렬처리
 
@@ -266,9 +317,15 @@ def objective(params):
         X_tr, y_tr = tr_df[X_names].values, tr_df[y_names].values
         X_val, y_val = val_df[X_names].values, val_df[y_names].values
 
-        reg_xgboost.fit(X_tr, y_tr)
+        scaler = MinMaxScaler()
+        scaler.fit(X_tr)
 
-        y_pred = reg_xgboost.predict(X_val)
+        X_tr_scaled = scaler.transform(X_tr)
+        X_val_scaled = scaler.transform(X_val)
+
+        reg_svr.fit(X_tr_scaled, y_tr)
+
+        y_pred = reg_svr.predict(X_val_scaled)
 
         return mean_absolute_error(y_val, y_pred)
 
@@ -280,37 +337,11 @@ def objective(params):
     return np.mean(mae_list)
 
 
-space = [
+opt_result = pickle.load(open(f'{out_path}/opt_result_4.sav', 'rb'))
 
-    Real(0.0025, 0.005),
-    Real(0.01, 10),
-    Real(0.01, 10),
-
-]
-
-opt_result  = gp_minimize(objective,
-                          space,
-                          n_calls = 100,
-                          acq_func = 'EI',
-                          random_state = 0,
-                          verbose = True,
-                          n_jobs = 6)
-
-pickle.dump(opt_result,
-            open(f'{out_path}/opt_result_3.sav', 'wb'))
-
-# ----------------------------------------------------------------------------------------------------------------------
-# 2. Train model with optimized hyper parameter
-# ----------------------------------------------------------------------------------------------------------------------
-
-reg_xgboost = XGBRegressor(n_estimators = 3000,
-                           random_state = 0,
-                           max_depth = 5,
-                           learning_rate = opt_result.x[0],
-                           reg_alpha = opt_result.x[1],
-                           reg_lambda = opt_result.x[2],
-                           n_jobs = 6)
-
+reg_svr = SVR(kernel = 'rbf',
+              C = opt_result.x[0],
+              gamma = opt_result.x[1])
 
 X_names = [x for x in train_val_list[0][1].columns if x not in ['공급유형_merge', '등록차량수']]
 y_names = '등록차량수'
@@ -320,9 +351,15 @@ y_train = train_df[y_names].values
 
 X_test = test_df[X_names].values
 
-reg_xgboost.fit(X_train, y_train)
+scaler = MinMaxScaler()
+scaler.fit(X_train)
 
-y_pred = reg_xgboost.predict(X_test)
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.fit_transform(X_test)
+
+reg_svr.fit(X_train_scaled, y_train)
+
+y_pred = reg_svr.predict(X_test_scaled)
 
 pred_result = pd.DataFrame({'code' : test_df['단지코드'].values.tolist(),
                             'prediction' : y_pred})
@@ -337,28 +374,76 @@ pred_result_submit.rename({'prediction' : 'num'}, axis = 1, inplace = True)
 pred_result_submit.to_csv(f'{out_path}/pred_result_submit.csv',
                           index = False)
 
+# ----------------------------------------------------------------------------------------------------------------------
+# 3. 예측 값이 하나로 수렴되는 현상 check
+# ----------------------------------------------------------------------------------------------------------------------
 
 
+# --------------------------------------->>> [Bayesian optimization을 위한 목적 함수 정의]
 
+def objective_2(params):
 
+    # --------------------------------------->>> Build XGBoost
 
+    reg_svr = SVR(kernel = 'rbf',
+                  C = params[0],
+                  gamma = params[1])
 
+    # ----- 병렬처리
 
+    ray.init(num_cpus = 4)
 
+    @ray.remote
 
+    def xgboost_fit_fn(train_val_tupple):
 
+        tr_df, val_df = train_val_tupple
 
+        X_names = [x for x in tr_df.columns if x not in ['공급유형_merge', '등록차량수']]
+        y_names = '등록차량수'
 
+        X_tr, y_tr = tr_df[X_names].values, tr_df[y_names].values
+        X_val, y_val = val_df[X_names].values, val_df[y_names].values
 
+        scaler = MinMaxScaler()
+        scaler.fit(X_tr)
 
+        X_tr_scaled = scaler.transform(X_tr)
+        X_val_scaled = scaler.transform(X_val)
 
+        reg_svr.fit(X_tr_scaled, y_tr)
 
+        y_pred = reg_svr.predict(X_val_scaled)
 
+        print(np.unique(y_pred))
 
+        return mean_absolute_error(y_val, y_pred)
 
+    ray_list = [xgboost_fit_fn.remote(tuple_) for tuple_ in train_val_list]
+    mae_list = ray.get(ray_list)
 
+    ray.shutdown()
 
+    return np.mean(mae_list)
 
+# --------------------------------------->>> [Hyper parameter space 범위 정하기]
+
+space = [
+
+    Real(1000, 3000),
+    Real(0.2, 0.3)
+
+]
+
+# --------------------------------------->>> [Optimization 실행]
+
+opt_result  = gp_minimize(objective_2,
+                          space,
+                          n_calls = 100,
+                          acq_func = 'EI',
+                          random_state = 0,
+                          verbose = True,
+                          n_jobs = 6)
 
 
 
