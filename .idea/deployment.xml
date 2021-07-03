@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="ec2-user@ec2-13-125-203-11.ap-northeast-2.compute.amazonaws.com:22" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="ec2-user@ec2-3-35-172-57.ap-northeast-2.compute.amazonaws.com:22" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="ec2-user@ec2-13-125-203-11.ap-northeast-2.compute.amazonaws.com:22">
         <serverdata>
@@ -17,6 +17,20 @@
         </serverdata>
       </paths>
       <paths name="ec2-user@ec2-3-35-12-25.ap-northeast-2.compute.amazonaws.com:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ec2-user/dacon_parking" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ec2-user@ec2-3-35-172-57.ap-northeast-2.compute.amazonaws.com:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/ec2-user/dacon_parking" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ec2-user@ec2-52-79-96-46.ap-northeast-2.compute.amazonaws.com:22">
         <serverdata>
           <mappings>
             <mapping deploy="/home/ec2-user/dacon_parking" local="$PROJECT_DIR$" />
