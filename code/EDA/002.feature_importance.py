@@ -221,6 +221,120 @@ pickle.dump(feat_names,
             open('data/feat_names_1.sav', 'wb'))
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# 2. Part 2
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [전체 변수 대상]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df.columns if '면적' in x]
+feat_names_3 = [x for x in train_df.columns if 'size_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df[feat_names_total].values
+y_train = train_df['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+fig, ax = plt.subplots(1, 1, figsize = (100, 10))
+
+sns.boxplot(data = imp_df, ax = ax)
+
+fig.tight_layout()
+
+plt.close(fig)
+
+
+fig.show()
+
+fig.savefig(f'{out_path}/feat_imp.png')
+
+
+imp_mean = imp_df.mean(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+
+fig, ax = plt.subplots(1, 1, figsize = (100, 10))
+
+ax.plot(np.arange(imp_mean.shape[0]), imp_mean['imp'].values,
+        color = sns.color_palette()[0],
+        marker = 'o',
+        ls = '--')
+
+ax.set_xticks(np.arange(imp_mean.shape[0]))
+ax.set_xticklabels(imp_mean['features'].values.tolist())
+
+fig.tight_layout()
+
+plt.close(fig)
+
+fig.show()
+
+fig.savefig(f'{out_path}/feat_imp_2.png')
+
+feat_names_selected = ['size_9',
+                       '임대료_max',
+                       'bus_ratio',
+                       '단위주차면수',
+                       'size_3',
+                       '면적_45_세대수',
+                       '임대보증금_max',
+                       'size_2',
+                       '임대료_mean',
+                       '임대보증금_mean',
+                       'mean_enc_supply',
+                       '면적_35_세대수']
+
+feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+pickle.dump(feat_names_selected,
+            open(f'{out_path}/feat_names_selected.sav', 'wb'))
+
+
+
+
+
+
+
+
+
+
 
 
 
