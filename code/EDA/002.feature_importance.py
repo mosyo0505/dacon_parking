@@ -327,6 +327,319 @@ pickle.dump(feat_names_selected,
             open(f'{out_path}/feat_names_selected.sav', 'wb'))
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# 3. Part 3
+# ----------------------------------------------------------------------------------------------------------------------
+
+delete_feat_names = ['단지코드',
+                     '임대건물구분',
+                     '공급유형',
+                     '자격유형']
+
+feat_names_total = list(set(train_df.columns) - set(delete_feat_names))
+
+pickle.dump(feat_names_total,
+            open('data/feat_names_3.sav', 'wb'))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 4. Part 4
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [전체 변수 대상]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df.columns if '면적' in x]
+feat_names_3 = [x for x in train_df.columns if 'size_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df[feat_names_total].values
+y_train = train_df['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+imp_mean = imp_df.mean(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+imp_mean.reset_index(drop = True, inplace = True)
+
+feat_names_selected = imp_mean.head(19).features.values.tolist()
+
+feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+pickle.dump(feat_names_selected,
+            open('data/feat_names_4.sav', 'wb'))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 5. Part 5
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [전체 변수 대상]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df.columns if '면적' in x]
+feat_names_3 = [x for x in train_df.columns if 'size_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df[feat_names_total].values
+y_train = train_df['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+fig, ax = plt.subplots(1, 1, figsize = (100, 10))
+
+sns.boxplot(data = imp_df, ax = ax)
+
+fig.tight_layout()
+
+plt.close(fig)
+
+
+fig.show()
+
+feat_names_selected = ['임대료_max',
+                       'bus_ratio',
+                       '단위주차면수',
+                       '임대보증금_max',
+                       'mean_enc_supply',
+                       '면적_35_세대수',
+                       '면적_45_세대수',
+                       '면적_50_세대수',
+                       'size_2',
+                       'size_3',
+                       'size_9']
+
+feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+pickle.dump(feat_names_selected,
+            open('data/feat_names_5.sav', 'wb'))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 6. Part 6
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+# --------------------------------------->>> [전체 변수 대상]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df.columns if '면적' in x]
+feat_names_3 = [x for x in train_df.columns if 'size_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df[feat_names_total].values
+y_train = train_df['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+imp_median = imp_df.median(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+imp_median.reset_index(drop = True, inplace = True)
+
+fig, ax = plt.subplots(1, 1, figsize = (100, 10))
+
+ax.plot(np.arange(imp_median.shape[0]), imp_median['imp'].values,
+        color = sns.color_palette()[0],
+        marker = 'o',
+        ls = '--')
+
+ax.axhline(y = 0,
+           color = sns.color_palette()[1])
+
+ax.set_xticks(np.arange(imp_median.shape[0]))
+ax.set_xticklabels(imp_median['features'].values.tolist())
+
+
+fig.tight_layout()
+
+plt.close(fig)
+
+# fig.show()
+
+fig.savefig(f'{out_path}/feat_imp_3.png')
+
+
+feat_names_selected = imp_median.loc[imp_median.imp > 0 , :].features.values.tolist()
+
+feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+pickle.dump(feat_names_selected,
+            open('data/feat_names_6.sav', 'wb'))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 7. Part 7
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [전체 변수 대상]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df.columns if '면적' in x]
+feat_names_3 = [x for x in train_df.columns if 'size_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df[feat_names_total].values
+y_train = train_df['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+imp_median = imp_df.median(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+imp_median.reset_index(drop = True, inplace = True)
+
+
+feat_names_selected = imp_median.loc[imp_median.imp > 0.005 , :].features.values.tolist()
+
+feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+pickle.dump(feat_names_selected,
+            open('data/feat_names_7.sav', 'wb'))
+
+
+
+
 
 
 
