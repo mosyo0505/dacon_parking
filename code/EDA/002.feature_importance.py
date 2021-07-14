@@ -24,6 +24,8 @@ import matplotlib as mpl
 import seaborn as sns
 import pickle
 
+from sklearn.linear_model import Lasso
+
 exec(open('code/functions/001.feature_importance.py').read())
 
 
@@ -58,9 +60,11 @@ plt.rcParams['axes.unicode_minus'] = False
 
 # --------------------------------------->>> [Data loading]
 
-train_df = pickle.load(open('data/train_df.sav', 'rb'))
-test_df = pickle.load(open('data/test_df.sav', 'rb'))
+# train_df = pickle.load(open('data/train_df.sav', 'rb'))
+# test_df = pickle.load(open('data/test_df.sav', 'rb'))
 
+train_df_2 = pickle.load(open('data/train_df_2.sav', 'rb'))
+test_df_2 = pickle.load(open('data/test_df_2.sav', 'rb'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 1. Part 1
@@ -636,6 +640,164 @@ feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지�
 
 pickle.dump(feat_names_selected,
             open('data/feat_names_7.sav', 'wb'))
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 8. Part 8
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [전체 변수 대상]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df.columns if '면적' in x]
+feat_names_3 = [x for x in train_df.columns if 'size_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df[feat_names_total].values
+y_train = train_df['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+imp_median = imp_df.median(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+imp_median.reset_index(drop = True, inplace = True)
+
+
+feat_names_selected = imp_median.loc[imp_median.imp > 0.04 , :].features.values.tolist()
+
+feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+pickle.dump(feat_names_selected,
+            open('data/feat_names_8.sav', 'wb'))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 9. Part 9
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [Randomforest feature importance]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df_2.columns if '면적' in x]
+feat_names_3 = [x for x in train_df_2.columns if 'size_' in x]
+feat_names_4 = [x for x in train_df_2.columns if 'region_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3 + feat_names_4
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df_2[feat_names_total].values
+y_train = train_df_2['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+imp_median = imp_df.median(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+imp_median.reset_index(drop = True, inplace = True)
+
+pickle.dump(imp_median,
+            open('data/imp_median_1.sav', 'wb'))
+
+
+# --------------------------------------->>> [LASSO coefficient]
+
+reg_lasso = Lasso(alpha = 0.5,
+                  normalize = True,
+                  max_iter = 5000)
+
+reg_lasso.fit(X_train, y_train)
+
+
+lasso_coef = pd.DataFrame({'feature' : feat_names_total,
+                           'coef' : abs(reg_lasso.coef_)}).sort_values('coef', ascending = False).\
+    reset_index(drop = True)
+
+
+# ----- Check
+
+fig, ax = plt.subplots(1, 1, figsize = (5, 5))
+
+ax.scatter(train_df_2['region_35'].values, train_df_2['등록차량수'].values,
+           color = sns.color_palette()[0],
+           s = 5,
+           alpha = 0.5)
+
+plt.close(fig)
+
+
+
+# feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+
+
 
 
 

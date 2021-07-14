@@ -4,7 +4,7 @@
 #
 #
 #
-#                                            1. Preprocessing 1
+#                                            10. Preprocessing 2
 #
 #
 #
@@ -23,10 +23,12 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import seaborn as sns
 import pickle
+from itertools import combinations
 
 from sklearn.model_selection import KFold
 from sklearn.decomposition import NMF
 
+exec(open('code/functions/001.feature_importance.py').read())
 
 
 # --------------------------------------->>> [Set directory]
@@ -34,7 +36,13 @@ from sklearn.decomposition import NMF
 
 # ----- Set output path
 
-out_path = 'data'
+filename = '010.preprocessing_2'
+
+if filename not in os.listdir('out/preprocessing'):
+
+    os.mkdir('{}/out/preprocessing/{}'.format(os.getcwd(), filename))
+
+out_path = 'out/preprocessing/{}'.format(filename)
 
 # --------------------------------------->>> [Set options]
 
@@ -426,41 +434,7 @@ test_df = pd.concat([test_df, size_df_test], axis = 1)
 train_df.reset_index(drop = True, inplace = True)
 test_df.reset_index(drop = True, inplace = True)
 
-# ----------------------------------------------------------------------------------------------------------------------
-# 4. 지역 관련 feature feature extraction
-# ----------------------------------------------------------------------------------------------------------------------
 
-# train_df_onehot = pd.get_dummies(train_df['지역'],
-#                                  prefix = '지역')
-#
-# test_df_onehot = pd.get_dummies(test_df['지역'],
-#                                 prefix = '지역')
-#
-# total_df_onehot = pd.concat([train_df_onehot, test_df_onehot])
-# total_df_onehot.reset_index(drop = True, inplace = True)
-#
-#
-# nmf = NMF(n_components = 50,
-#           init = 'random',
-#           random_state = 0,
-#           max_iter = 300)
-#
-# W = nmf.fit_transform(total_df_onehot.values)
-#
-# W_tr = W[0:train_df_onehot.shape[0], :]
-# W_ts = W[train_df_onehot.shape[0]:, :]
-#
-# region_df_train = pd.DataFrame(W_tr,
-#                                columns = [f'region_{x}' for x in range(W_tr.shape[1])])
-#
-# region_df_test = pd.DataFrame(W_ts,
-#                               columns = [f'region_{x}' for x in range(W_ts.shape[1])])
-#
-# train_df = pd.concat([train_df, region_df_train], axis = 1)
-# test_df = pd.concat([test_df, region_df_test], axis = 1)
-#
-# train_df.reset_index(drop = True, inplace = True)
-# test_df.reset_index(drop = True, inplace = True)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 4. 결측치 처리
@@ -577,40 +551,196 @@ train_df.reset_index(drop = True, inplace = True)
 test_df.reset_index(drop = True, inplace = True)
 
 
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 7. 현재까지 상황을 바탕으로 feature importance 확인하기
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+# --------------------------------------->>> [전체 변수 대상]
+
+feat_names_1 = ['총세대수',
+              '공가수',
+              'subway',
+              'bus',
+              '단지내주차면수',
+              '세대수합',
+              '임대보증금_mean',
+              '임대보증금_min',
+              '임대보증금_max',
+              '임대료_mean',
+              '임대료_min',
+              '임대료_max',
+              'mean_enc_region',
+              'mean_enc_supply',
+              'mean_enc_cond',
+              '임대세대외',
+              '실세대수',
+              '임대세대비율',
+              'subway_ratio',
+              'bus_ratio',
+              '단위주차면수']
+
+feat_names_2 = [x for x in train_df.columns if '면적' in x]
+feat_names_3 = [x for x in train_df.columns if 'size_' in x]
+
+
+feat_names_total = feat_names_1 + feat_names_2 + feat_names_3
+
+feat_names_total.remove('총세대수')
+feat_names_total.remove('세대수합')
+feat_names_total.remove('실세대수')
+feat_names_total.remove('단지내주차면수')
+
+X_train = train_df[feat_names_total].values
+y_train = train_df['등록차량수'].values
+
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names_total)
+
+imp_median = imp_df.median(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+imp_median.reset_index(drop = True, inplace = True)
+
+feat_names_selected = imp_median.loc[imp_median.imp > 0.01 , :].features.values.tolist()
+
+feat_names_selected = ['총세대수', '실세대수', '세대수합', '단지내주차면수'] + feat_names_selected
+
+train_df_selected = train_df[feat_names_selected].copy()
+train_df_target = train_df['등록차량수'].values
+
+test_df_selected = test_df[feat_names_selected].copy()
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 8. Feature generation part 1
+# ----------------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------->>> [Pairwise sum / abs diff / mutiply]
+
+feat_names_pair = list(combinations(train_df_selected.columns.tolist(), 2))
+
+for combi in feat_names_pair:
+
+    # ----- Train
+
+    feat_1 = train_df_selected[combi[0]].values
+    feat_2 = train_df_selected[combi[1]].values
+
+    sum_ = feat_1 + feat_2
+    abs_diff_ = abs(feat_1 - feat_2)
+    multip_ = feat_1 * feat_2
+
+    train_df_selected[f'{combi[0]}_{combi[1]}_sum'] = sum_
+    train_df_selected[f'{combi[0]}_{combi[1]}_abs_diff'] = abs_diff_
+    train_df_selected[f'{combi[0]}_{combi[1]}_multip'] = multip_
+
+    # ----- Test
+
+    feat_1 = test_df_selected[combi[0]].values
+    feat_2 = test_df_selected[combi[1]].values
+
+    sum_ = feat_1 + feat_2
+    abs_diff_ = abs(feat_1 - feat_2)
+    multip_ = feat_1 * feat_2
+
+    test_df_selected[f'{combi[0]}_{combi[1]}_sum'] = sum_
+    test_df_selected[f'{combi[0]}_{combi[1]}_abs_diff'] = abs_diff_
+    test_df_selected[f'{combi[0]}_{combi[1]}_multip'] = multip_
+
+
+# --------------------------------------->>> [변수 중요도 확인]
+
+feat_names = train_df_selected.columns.tolist()
+# feat_names.remove('총세대수')
+# feat_names.remove('세대수합')
+# feat_names.remove('실세대수')
+# feat_names.remove('단지내주차면수')
+
+
+X_train = train_df_selected[feat_names].values
+y_train = train_df_target
+
+imp_arr = rf_imp_fn(X = X_train,
+                    y = y_train,
+                    n_estimators = 10000)
+
+imp_df = pd.DataFrame(imp_arr,
+                      columns = feat_names)
+
+imp_median = imp_df.median(axis = 0).reset_index(drop = False).rename({'index' : 'features',
+                                                                   0 : 'imp'}, axis = 1).sort_values(by = 'imp',
+                                                                                                     ascending = False)
+
+imp_median.reset_index(drop = True, inplace = True)
+
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# 9. Train / Test set 분포비교
+# ----------------------------------------------------------------------------------------------------------------------
+
+feat_total = train_df_selected.columns.tolist()
+feat_order = imp_median.features.tolist()
+
+for feat in feat_total:
+
+    # feat = feat_total[0]
+
+    fig, axes  = plt.subplots(1, 2, figsize = (20, 10))
+    ax_0, ax_1 = axes[0], axes[1]
+
+    tr_ = train_df_selected[feat].values
+    ts_ = test_df_selected[feat].values
+
+    # ----- histogram
+
+    sns.histplot(x = tr_,
+                 color = sns.color_palette()[0],
+                 alpha = 0.5,
+                 ax = ax_0,
+                 label = 'Train',
+                 stat = 'density')
+
+    sns.histplot(x = ts_,
+                 color = sns.color_palette()[1],
+                 alpha = 0.5,
+                 ax = ax_0,
+                 label = 'Test',
+                 stat = 'density')
+
+    ax_0.legend()
+
+    # ----- Boxplot
+
+    plot_df = pd.DataFrame({'set' : ['Train']*len(tr_) + ['Test']*len(ts_),
+                            'value' : np.r_[tr_, ts_]})
+
+    sns.boxplot(data = plot_df,
+                x = 'set',
+                y = 'value',
+                ax = ax_1)
+
+    fig.suptitle(f'{feat} : {feat_order.index(feat)}/{len(feat_order)}',
+                 fontsize = 20)
+
+    plt.close(fig)
+
+    fig.savefig(os.path.join(out_path, f'{feat}.png'))
+
+
+
+
+
+
+
 pickle.dump(train_df, open('data/train_df_2.sav', 'wb'))
 pickle.dump(test_df, open('data/test_df_2.sav', 'wb'))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
